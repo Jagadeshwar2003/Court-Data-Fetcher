@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>National Judicial Service - Case Status</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* --- Global Reset & Government Aesthetic --- */
+  body {
+    font-family: 'Roboto', sans-serif;
+    margin: 0; padding: 0;
+    background-color: #f0f4f7; /* Light grey/blue background */
+    min-height: 100vh;
+    color: #333;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+  
+  /* --- Header & Branding --- */
+  .header {
+    background-color: #004c99; /* Deep Government Blue */
+    color: white;
+    padding: 20px 0;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  .logo { font-size: 2.4em; font-weight: 700; margin-bottom: 5px; }
+  .subheader { font-size: 1.1em; opacity: 0.9; }
+
+  /* --- Main Content Cards --- */
+  .search-card, .results-card {
+    background: white;
+    border: 1px solid #d4e0e8; /* Subtle border for definition */
+    border-radius: 8px;
+    padding: 35px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+  }
+
+  /* --- Form Elements --- */
+  h2 { color: #004c99; margin-top: 0; border-bottom: 2px solid #e0eaf0; padding-bottom: 10px; margin-bottom: 25px; }
+  .form-group { margin-bottom: 20px; }
+  label { display: block; margin-bottom: 8px; font-weight: 500; color: #1a1a1a; font-size: 0.95em; }
+  input[type="text"] {
+    width: 100%; padding: 12px; border: 1px solid #c8d3dd; border-radius: 4px;
+    box-sizing: border-box; font-size: 16px; transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: #007bff; outline: 1px solid #007bff; }
+  
+  /* --- CAPTCHA Styling --- */
+  .captcha-container { display: flex; align-items: center; gap: 15px; }
+  .captcha-display {
+    font-family: 'Courier New', monospace; font-size: 26px; font-weight: bold; 
+    letter-spacing: 5px; background: #e9ecef; color: #495057; 
+    padding: 8px 15px; border-radius: 4px; border: 1px solid #ced4da;
+    user-select: none; /* Prevent text selection on CAPTCHA */
+  }
+
+  /* --- Button Styling --- */
+  .search-btn {
+    width: 100%; background: #007bff; color: white; padding: 14px;
+    border: none; border-radius: 4px; cursor: pointer; font-size: 18px;
+    font-weight: 500; transition: background 0.3s ease, box-shadow 0.3s;
+  }
+  .search-btn:hover:not(:disabled) { background: #0056b3; box-shadow: 0 4px 8px rgba(0, 86, 179, 0.3); }
+  .search-btn:disabled { background: #b3cde0; cursor: not-allowed; }
+  
+  /* --- Loading/Error/Results Styling --- */
+  .loading-spinner {
+    border: 4px solid #f3f3f3; border-top: 4px solid #004c99;
+    border-radius: 50%; width: 25px; height: 25px; animation: spin 1s linear infinite;
+    display: none; margin: 20px auto;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  #errorMessage {
+    background: #fff3cd; color: #856404; border: 1px solid #ffeeba;
+    padding: 15px; border-radius: 4px; margin-top: 20px; display: none;
+    font-weight: 500; font-size: 0.9em;
+  }
+  
+  /* Case Details Table-like Layout */
+  .results-details { 
+    display: grid; 
+    grid-template-columns: 180px 1fr; /* Two columns: Label and Value */
+    padding: 12px 0; 
+    border-bottom: 1px dashed #e0eaf0; /* Dashed line for clean separation */
+  }
+  .results-label { 
+    font-weight: 500; 
+    color: #495057; 
+    font-size: 0.95em;
+  }
+  .results-value { 
+    font-weight: 600; 
+    color: #1a1a1a;
+  }
+  .results-details:last-of-type { border-bottom: none; }
+
+  /* Document Buttons */
+  .document-btn {
+    background: #28a745; color: white; padding: 10px 18px; border: none;
+    border-radius: 4px; cursor: pointer; margin-right: 10px; margin-top: 15px;
+    font-size: 14px; font-weight: 500; transition: background 0.3s ease;
+  }
+  .document-btn:hover { background: #1e7e34; }
+
+  /* Toast for notifications */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #343a40; color: white; padding: 12px 25px; border-radius: 6px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1000; opacity: 0; 
+    transition: opacity 0.5s, transform 0.5s;
+    transform: translateX(-50%) translateY(50px);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="container">
+        <div class="logo">Indian Judicial Service Portal</div>
+        <div class="subheader">National Judicial Data Grid (NJDG) | Case Status System</div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="search-card">
+        <h2>🔍 Find Case Status by CNR</h2>
+        <form id="searchForm">
+            <div class="form-group">
+                <label for="cnrNumber">CNR Number (16-Digit Alphanumeric Code) *</label>
+                <input type="text" id="cnrNumber" placeholder="e.g., DLSU0512345678902023" maxlength="16" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="captcha">Enter Security Code (CAPTCHA) *</label>
+                <div class="captcha-container">
+                    <input type="text" id="captcha" placeholder="Enter code" style="width: 150px;" required>
+                    <div class="captcha-display" id="captchaDisplay">1A2B3</div>
+                    </div>
+            </div>
+
+            <button type="submit" class="search-btn" id="searchButton">Get Case Status</button>
+        </form>
+        <div class="loading-spinner" id="loadingSpinner"></div>
+        <div id="errorMessage"></div>
+    </div>
+
+    <div class="results-card" id="resultsCard" style="display:none;">
+        <h2 style="color: #28a745;">✅ Case Found - Current Status</h2>
+        
+        <div class="results-details"><span class="results-label">Case Title:</span> <span class="results-value" id="caseTitle"></span></div>
+        <div class="results-details"><span class="results-label">CNR Number:</span> <span class="results-value" id="cnrDisplay"></span></div>
+        <div class="results-details"><span class="results-label">Case Number:</span> <span class="results-value" id="caseNumberDisplay"></span></div>
+        <div class="results-details"><span class="results-label">Petitioner (Advocate):</span> <span class="results-value" id="petitioner"></span></div>
+        <div class="results-details"><span class="results-label">Respondent (Advocate):</span> <span class="results-value" id="respondent"></span></div>
+        <div class="results-details"><span class="results-label">Filing Date:</span> <span class="results-value" id="filingDate"></span></div>
+        <div class="results-details"><span class="results-label">Presiding Judge:</span> <span class="results-value" id="judge"></span></div>
+        <div class="results-details" style="background-color: #f7f9fa;"><span class="results-label">Next Hearing Date:</span> <span class="results-value" id="nextHearing"></span></div>
+        <div class="results-details" style="background-color: #f7f9fa;"><span class="results-label">Current Status:</span> <strong class="results-value" id="caseStatus" style="color: #d8a002;"></strong></div>
+
+        <h3 style="margin-top: 30px; color: #004c99; font-weight: 500;">Judgments & Order Sheets</h3>
+        <button class="document-btn" onclick="downloadDocument('Final_Judgment')">📄 Final Judgment (15-09-2025)</button>
+        <button class="document-btn" onclick="downloadDocument('Latest_Order_Sheet')">📜 Latest Order Sheet (10-09-2025)</button>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  // --- REALISTIC STANDALONE DEMO JAVASCRIPT ---
+
+  const searchForm = document.getElementById('searchForm');
+  const resultsCard = document.getElementById('resultsCard');
+  const loadingSpinner = document.getElementById('loadingSpinner');
+  const searchButton = document.getElementById('searchButton');
+  const errorElement = document.getElementById('errorMessage');
+  const toastElement = document.getElementById('toast');
+
+  // Realistic Data Structure (Simulates a secure database lookup)
+  const REALISTIC_CASES = {
+    'MHAU019999992015': {
+      title: 'State of Maharashtra vs. M/s. AquaCorp Ltd.',
+      cnrNumber: 'MHAU019999992015',
+      caseNumber: 'CRL/123/2024 (Pending)',
+      petitioner: 'State of Maharashtra (Adv. P. K. Singh)',
+      respondent: 'M/s. AquaCorp Ltd. (Adv. A. Sharma)',
+      filingDate: '15-Mar-2024',
+      nextHearing: '25-Oct-2025 (Mandatory Appearance)',
+      status: 'Active - Final Arguments Listed',
+      judge: 'Hon\'ble Justice R. L. Jadhav, Principal Judge'
+    },
+    'DLSU0512345678902023': {
+      title: 'Ramesh Kumar vs. Smt. Priya Sharma',
+      cnrNumber: 'DLSU0512345678902023',
+      caseNumber: 'CS/15/2023 (Disposed)',
+      petitioner: 'Ramesh Kumar (Adv. V. K. Jain)',
+      respondent: 'Smt. Priya Sharma (Adv. S. L. Reddy)',
+      filingDate: '10-May-2023',
+      nextHearing: 'N/A (Case Disposed)',
+      status: 'Disposed - Decree Passed on 01-Sep-2024',
+      judge: 'Presiding Officer K. N. Verma'
+    }
+  };
+
+  searchForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+    searchCase();
+  });
+
+  function showLoading(is_loading) {
+    loadingSpinner.style.display = is_loading ? 'block' : 'none';
+    searchButton.disabled = is_loading;
+    searchButton.textContent = is_loading ? 'Searching Records...' : 'Get Case Status';
+    errorElement.style.display = 'none';
+    resultsCard.style.display = 'none';
+  }
+
+  function showError(msg) {
+    errorElement.innerHTML = `<strong>⚠️ Error:</strong> ${msg}`;
+    errorElement.style.display = 'block';
+  }
+
+  function showToast(msg) {
+    toastElement.textContent = msg;
+    toastElement.classList.add('show');
+    setTimeout(() => { toastElement.classList.remove('show'); }, 3000);
+  }
+
+  function searchCase() {
+    const cnrNumberInput = document.getElementById('cnrNumber');
+    const cnrNumber = cnrNumberInput.value.trim().toUpperCase();
+    const captchaInput = document.getElementById('captcha');
+    const captcha = captchaInput.value.trim();
+    
+    showLoading(false); // Reset error state
+
+    // 1. Validation Checks
+    if (cnrNumber.length !== 16) {
+        showError('Invalid CNR Number format. Must be a 16-digit alphanumeric code.');
+        return;
+    }
+    if (captcha !== document.getElementById('captchaDisplay').textContent) {
+        showError('Security code (CAPTCHA) is incorrect. Please re-enter the code shown.');
+        return;
+    }
+
+    // Start loading state
+    showLoading(true);
+
+    // 2. Simulate API Call Delay (realistic 2-second delay)
+    setTimeout(() => {
+        showLoading(false);
+
+        const data = REALISTIC_CASES[cnrNumber];
+
+        if (!data) {
+            // Case Not Found Error
+            showError(`Case with CNR **${cnrNumber}** not found in the National Judicial Data Grid (NJDG).`);
+            return;
+        }
+
+        // 3. Populate Results
+        document.getElementById("caseTitle").textContent = data.title;
+        document.getElementById("cnrDisplay").textContent = data.cnrNumber;
+        document.getElementById("caseNumberDisplay").textContent = data.caseNumber;
+        document.getElementById("petitioner").textContent = data.petitioner;
+        document.getElementById("respondent").textContent = data.respondent;
+        document.getElementById("filingDate").textContent = data.filingDate;
+        document.getElementById("nextHearing").textContent = data.nextHearing;
+        document.getElementById("caseStatus").textContent = data.status;
+        document.getElementById("judge").textContent = data.judge;
+        
+        resultsCard.style.display = 'block';
+        window.scrollTo({ top: resultsCard.offsetTop, behavior: 'smooth' });
+
+    }, 2000); // 2000 milliseconds = 2 seconds
+  }
+
+  function downloadDocument(documentType) {
+    // 4. Document Download Simulation
+    showToast(`Download Request Sent for: ${documentType}. (A secure token is being generated to retrieve the document.)`);
+  }
+</script>
+</body>
+</html>
